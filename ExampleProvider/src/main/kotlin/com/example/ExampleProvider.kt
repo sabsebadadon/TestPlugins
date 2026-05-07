@@ -2,8 +2,9 @@ package com.example
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.utils.AppUtils.app // This fixes the 'get' error
-import org.jsoup.nodes.Element
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.app // This is the crucial line for the 'app' error
 
 class CinevoProvider : MainAPI() {
     override var mainUrl = "https://cinevo.site"
@@ -20,8 +21,8 @@ class CinevoProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}?page=$page"
-        val response = app.get(url).document
-        val home = response.select("div.movie-card, div.item, article.poster").mapNotNull {
+        val document = app.get(url).document
+        val home = document.select("div.movie-card, div.item, article.poster").mapNotNull {
             val title = it.selectFirst("h2, h3, .title")?.text()?.trim() ?: return@mapNotNull null
             val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
             newMovieSearchResponse(title, href, TvType.Movie)
@@ -31,8 +32,8 @@ class CinevoProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/search/$query"
-        val response = app.get(url).document
-        return response.select("div.movie-card, div.item, article.poster").mapNotNull {
+        val document = app.get(url).document
+        return document.select("div.movie-card, div.item, article.poster").mapNotNull {
             val title = it.selectFirst("h2, h3, .title")?.text()?.trim() ?: return@mapNotNull null
             val href = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
             newMovieSearchResponse(title, href, TvType.Movie)
@@ -40,13 +41,12 @@ class CinevoProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val title = "Cinevo Result"
-        return newMovieLoadResponse(title, url, TvType.Movie, url)
+        return newMovieLoadResponse("Cinevo Title", url, TvType.Movie, url)
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        val response = app.get(data).document
-        response.select("iframe").forEach { 
+        val document = app.get(data).document
+        document.select("iframe").forEach { 
             val link = it.attr("src")
             if (link.contains("http")) {
                 loadExtractor(link, data, subtitleCallback, callback)
